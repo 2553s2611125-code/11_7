@@ -7,23 +7,181 @@ st.set_page_config(
     layout="wide"
 )
 
+# =========================
+# 디자인 설정
+# =========================
 st.markdown("""
 <style>
-.stApp {background-color: #fffdf7;}
-.block-container {max-width: 1100px; padding-top: 2rem;}
-.hero {
-    padding: 25px;
-    border-radius: 22px;
-    background: linear-gradient(110deg, #fff0d8, #edf7e9);
+/* 전체 배경 */
+.stApp {
+    background: #f7f4f1;
+    color: #393333;
+    font-family: sans-serif;
 }
-.hero h1 {color: #24513e;}
-div.stButton > button {
-    border-radius: 12px;
-    min-height: 2.6rem;
+
+/* 본문 너비와 여백 */
+.block-container {
+    max-width: 1100px;
+    padding-top: 2rem;
+    padding-bottom: 3rem;
+}
+
+/* 사이드바 */
+[data-testid="stSidebar"] {
+    background: #eee8e4;
+    border-right: 1px solid #e1d7d0;
+}
+
+[data-testid="stSidebar"] p,
+[data-testid="stSidebar"] label {
+    color: #514344;
+}
+
+/* 제목 */
+h1, h2, h3 {
+    color: #4b3939 !important;
+    letter-spacing: -0.5px;
+}
+
+/* 상단 메인 카드 */
+.hero {
+    padding: 30px;
+    border-radius: 24px;
+    background: linear-gradient(120deg, #eee3dc, #f5efeb);
+    border: 1px solid #e5d9d1;
+    margin-bottom: 28px;
+}
+
+.hero p {
+    color: #776564;
+    font-size: 16px;
+}
+
+.hero h1 {
+    color: #493535 !important;
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin: 12px 0;
+}
+
+/* 버튼 공통 디자인 */
+div.stButton > button,
+div.stFormSubmitButton > button {
+    border-radius: 14px;
+    min-height: 2.8rem;
+    border: 1px solid #ded0c9;
+    background: #eee5df;
+    color: #574343;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+/* 버튼에 마우스를 올렸을 때 */
+div.stButton > button:hover,
+div.stFormSubmitButton > button:hover {
+    background: #e1d1c9;
+    color: #453232;
+    border-color: #bda6a0;
+}
+
+/* 주요 버튼 */
+div.stButton > button[kind="primary"],
+div.stFormSubmitButton > button[kind="primary"] {
+    background: #76595b;
+    color: #ffffff;
+    border: 1px solid #76595b;
+}
+
+div.stButton > button[kind="primary"]:hover,
+div.stFormSubmitButton > button[kind="primary"]:hover {
+    background: #5e4547;
+    color: #ffffff;
+}
+
+/* 메뉴 카드와 정보 카드 */
+[data-testid="stVerticalBlockBorderWrapper"] {
+    background: #fffdfa;
+    border-color: #e6dcd5 !important;
+    border-radius: 18px !important;
+}
+
+/* 입력창 */
+div[data-baseweb="input"] input,
+div[data-baseweb="textarea"] textarea {
+    background: #fffdfa;
+    color: #453939;
+    border-radius: 10px;
+}
+
+/* 선택 메뉴 */
+div[data-baseweb="select"] > div {
+    background: #fffdfa;
+    border-color: #ded2ca;
+    border-radius: 10px;
+}
+
+/* 체크박스와 라디오 */
+[data-testid="stCheckbox"],
+[data-testid="stRadio"] {
+    color: #514344;
+}
+
+/* 구분선 */
+hr {
+    border-color: #e2d7d0;
+}
+
+/* 안내 문구 */
+[data-testid="stAlert"] {
+    border-radius: 14px;
+}
+
+/* 통계 카드 */
+[data-testid="stMetric"] {
+    background: #fffdfa;
+    padding: 18px;
+    border: 1px solid #e8ded7;
+    border-radius: 16px;
+}
+
+[data-testid="stMetricLabel"] {
+    color: #806d6a;
+}
+
+[data-testid="stMetricValue"] {
+    color: #594142;
+}
+
+/* 하단 설명 */
+.small-note {
+    color: #897a76;
+    font-size: 13px;
+}
+
+/* 작은 화면에서도 보기 좋게 */
+@media (max-width: 700px) {
+    .block-container {
+        padding-top: 1rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .hero {
+        padding: 20px;
+        border-radius: 18px;
+    }
+
+    .hero h1 {
+        font-size: 2rem;
+    }
 }
 </style>
 """, unsafe_allow_html=True)
 
+
+# =========================
+# 메뉴 데이터
+# =========================
 MENUS = [
     {"name":"치킨 카레라이스","category":"한식","price":11000,
      "ingredients":["닭고기","쌀","당근","감자"],"allergens":["우유"],"time":15},
@@ -57,6 +215,10 @@ PAGES = [
     "메뉴 목록", "내 정보", "설정"
 ]
 
+
+# =========================
+# 앱 상태 저장
+# =========================
 if "page" not in st.session_state:
     st.session_state.page = "메인 화면"
 
@@ -71,12 +233,18 @@ if "child_info" not in st.session_state:
 if "alerts" not in st.session_state:
     st.session_state.alerts = True
 
+
 def money(n):
     return f"{n:,}원"
+
 
 def go(page):
     st.session_state.page = page
 
+
+# =========================
+# 상단 메인 디자인
+# =========================
 st.markdown("""
 <div class="hero">
     <p>👶 아이와 함께하는 식사, 조금 더 편리하게</p>
@@ -85,6 +253,10 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+
+# =========================
+# 화면 이동 버튼
+# =========================
 st.write("### 원하는 기능을 선택하세요")
 
 cols = st.columns(3)
@@ -104,6 +276,10 @@ st.divider()
 page = st.session_state.page
 info = st.session_state.child_info
 
+
+# =========================
+# 1. 메인 화면
+# =========================
 if page == "메인 화면":
     st.subheader("오늘도 아이와 함께 든든하게!")
     st.write(
@@ -121,6 +297,10 @@ if page == "메인 화면":
         "아이 정보와 설정을 이용할 수 있어요."
     )
 
+
+# =========================
+# 2. 식사 정보 QR
+# =========================
 elif page == "식사 정보 QR":
     st.subheader("▦ 식사 정보 QR")
     st.write("메뉴 코드를 입력하여 식사 정보를 확인하세요.")
@@ -147,8 +327,15 @@ elif page == "식사 정보 QR":
         elif not code:
             st.warning("메뉴 코드를 입력해 주세요.")
         else:
-            st.error("등록되지 않은 코드입니다. BABY001을 입력해 보세요.")
+            st.error(
+                "등록되지 않은 코드입니다. "
+                "BABY001을 입력해 보세요."
+            )
 
+
+# =========================
+# 3. 메뉴 추천
+# =========================
 elif page == "메뉴 추천":
     st.subheader("✨ 아이와 함께 먹을 메뉴 추천")
 
@@ -186,6 +373,10 @@ elif page == "메뉴 추천":
         "실제 식품 안전을 보장하지 않습니다."
     )
 
+
+# =========================
+# 4. 메뉴 목록
+# =========================
 elif page == "메뉴 목록":
     st.subheader("🍲 전체 메뉴 목록")
 
@@ -194,7 +385,10 @@ elif page == "메뉴 목록":
         ["전체", "한식", "양식", "중식", "간편식"]
     )
 
-    query = st.text_input("메뉴 검색", placeholder="음식 이름 입력")
+    query = st.text_input(
+        "메뉴 검색",
+        placeholder="음식 이름 입력"
+    )
 
     items = [
         m for m in MENUS
@@ -224,6 +418,10 @@ elif page == "메뉴 목록":
                         + ", ".join(sorted(overlap))
                     )
 
+
+# =========================
+# 5. 내 정보
+# =========================
 elif page == "내 정보":
     st.subheader("👶 아이 정보 및 알레르기 설정")
 
@@ -284,6 +482,10 @@ elif page == "내 정보":
         "입력 정보는 영구 저장되지 않을 수 있습니다."
     )
 
+
+# =========================
+# 6. 설정
+# =========================
 elif page == "설정":
     st.subheader("⚙️ 앱 설정")
 
@@ -301,6 +503,11 @@ elif page == "설정":
     st.write("**버전:** 1.0")
     st.write("**주요 기능:** 메뉴 확인, 알레르기 안내, 메뉴 추천")
 
-st.divider()
-st.caption("아이랑 한끼 · 영유아를 돌보는 부모의 식사 준비를 돕는 앱")
 
+# =========================
+# 하단 안내
+# =========================
+st.divider()
+st.caption(
+    "아이랑 한끼 · 영유아를 돌보는 부모의 식사 준비를 돕는 앱"
+)
