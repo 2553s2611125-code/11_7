@@ -1,11 +1,14 @@
-
-import streamlit as st
 import random
+import streamlit as st
 
+# -----------------------------
+# 페이지 설정
+# -----------------------------
 st.set_page_config(
-    page_title="오늘 뭐 먹지? 🍓",
-    page_icon="🍓",
+    page_title="우리끼니 | 오늘의 메뉴 추천",
+    page_icon="🍽️",
     layout="wide",
+    initial_sidebar_state="expanded",
 )
 
 # -----------------------------
@@ -13,549 +16,613 @@ st.set_page_config(
 # -----------------------------
 MENUS = [
     {
-        "name": "계란볶음밥", "emoji": "🍳", "time": 10,
-        "difficulty": "쉬움", "meals": ["아침", "점심", "저녁"],
-        "category": "간편식",
-        "ingredients": ["밥", "계란", "대파", "당근"],
-        "description": "냉장고 속 재료로 뚝딱 만드는 한 끼",
-        "steps": ["대파와 당근을 잘게 썰어요.", "팬에 채소를 볶아요.", "밥과 계란을 넣고 골고루 볶아요."],
+        "name": "소고기 채소죽",
+        "description": "부드러운 식감으로 아침이나 가벼운 식사에 잘 어울려요.",
+        "time": 20,
+        "ingredients": ["소고기", "쌀", "당근", "애호박"],
+        "difficulty": "쉬움",
+        "meal_type": "아침",
+        "menu_type": "죽",
+        "steps": ["소고기와 채소를 잘게 다져요.", "냄비에 재료와 불린 쌀을 넣어요.", "물을 넣고 쌀이 충분히 익을 때까지 끓여요."],
     },
     {
-        "name": "두부덮밥", "emoji": "🍚", "time": 15,
-        "difficulty": "쉬움", "meals": ["점심", "저녁"],
-        "category": "한식",
-        "ingredients": ["밥", "두부", "양파", "대파"],
-        "description": "부드러운 두부로 만드는 든든한 덮밥",
-        "steps": ["두부와 양파를 썰어요.", "팬에 양파와 두부를 익혀요.", "밥 위에 올려 완성해요."],
+        "name": "닭고기 채소볶음밥",
+        "description": "닭고기와 여러 채소를 한 번에 준비할 수 있는 메뉴예요.",
+        "time": 20,
+        "ingredients": ["닭고기", "밥", "당근", "양파"],
+        "difficulty": "쉬움",
+        "meal_type": "점심",
+        "menu_type": "밥",
+        "steps": ["닭고기와 채소를 잘게 썰어요.", "팬에 닭고기를 충분히 익혀요.", "채소와 밥을 넣고 골고루 볶아요."],
     },
     {
-        "name": "참치마요덮밥", "emoji": "🥣", "time": 10,
-        "difficulty": "쉬움", "meals": ["점심", "저녁"],
-        "category": "간편식",
-        "ingredients": ["밥", "참치", "계란", "마요네즈"],
-        "description": "재료가 간단해서 준비하기 편해요",
-        "steps": ["참치의 기름을 빼요.", "계란을 익혀요.", "밥 위에 참치와 계란을 올리고 마요네즈를 곁들여요."],
+        "name": "두부 달걀찜",
+        "description": "두부와 달걀을 활용해 부드럽게 만들 수 있어요.",
+        "time": 15,
+        "ingredients": ["두부", "달걀"],
+        "difficulty": "쉬움",
+        "meal_type": "저녁",
+        "menu_type": "찜",
+        "steps": ["두부를 곱게 으깨요.", "달걀을 풀어 두부와 섞어요.", "그릇에 담아 속까지 익도록 쪄요."],
     },
     {
-        "name": "간장계란밥", "emoji": "🍳", "time": 5,
-        "difficulty": "쉬움", "meals": ["아침", "점심", "저녁"],
-        "category": "간편식",
-        "ingredients": ["밥", "계란", "간장", "참기름"],
-        "description": "바쁜 날 가장 간단하게 준비하는 메뉴",
-        "steps": ["계란을 프라이해요.", "따뜻한 밥 위에 올려요.", "간장과 참기름을 기호에 맞게 곁들여요."],
+        "name": "감자 당근 수프",
+        "description": "감자와 당근을 익혀 부드럽게 갈아 만드는 수프예요.",
+        "time": 25,
+        "ingredients": ["감자", "당근", "우유"],
+        "difficulty": "보통",
+        "meal_type": "아침",
+        "menu_type": "수프",
+        "steps": ["감자와 당근을 작게 썰어요.", "재료가 부드러워질 때까지 삶아요.", "우유를 넣고 곱게 갈아 한 번 더 끓여요."],
     },
     {
-        "name": "계란국", "emoji": "🍲", "time": 10,
-        "difficulty": "쉬움", "meals": ["아침", "점심", "저녁"],
-        "category": "국·찌개",
-        "ingredients": ["계란", "대파", "육수"],
-        "description": "밥과 함께 먹기 좋은 따뜻한 국",
-        "steps": ["육수를 끓여요.", "풀어 둔 계란을 천천히 넣어요.", "대파를 넣고 충분히 익혀요."],
+        "name": "애호박 된장국",
+        "description": "애호박을 활용한 따뜻한 국 메뉴예요.",
+        "time": 20,
+        "ingredients": ["애호박", "두부", "된장"],
+        "difficulty": "쉬움",
+        "meal_type": "저녁",
+        "menu_type": "국",
+        "steps": ["애호박과 두부를 먹기 좋은 크기로 썰어요.", "물을 끓이고 된장을 소량 풀어요.", "재료를 넣고 충분히 익혀요."],
     },
     {
-        "name": "두부된장찌개", "emoji": "🍲", "time": 20,
-        "difficulty": "보통", "meals": ["점심", "저녁"],
-        "category": "국·찌개",
-        "ingredients": ["두부", "된장", "애호박", "양파", "대파"],
-        "description": "구수하게 즐기는 집밥 메뉴",
-        "steps": ["채소와 두부를 썰어요.", "물에 된장을 풀고 채소를 넣어요.", "두부를 넣고 재료가 익을 때까지 끓여요."],
+        "name": "연어 채소덮밥",
+        "description": "연어와 채소를 밥 위에 올려 간편하게 준비해요.",
+        "time": 25,
+        "ingredients": ["연어", "밥", "브로콜리", "당근"],
+        "difficulty": "보통",
+        "meal_type": "점심",
+        "menu_type": "밥",
+        "steps": ["연어의 가시를 꼼꼼히 확인해요.", "연어와 채소를 각각 충분히 익혀요.", "밥 위에 재료를 올려요."],
     },
     {
-        "name": "김치볶음밥", "emoji": "🍚", "time": 15,
-        "difficulty": "쉬움", "meals": ["점심", "저녁"],
-        "category": "한식",
-        "ingredients": ["밥", "김치", "계란", "대파"],
-        "description": "익은 김치로 간단히 만드는 볶음밥",
-        "steps": ["김치와 대파를 썰어요.", "팬에 김치와 대파를 볶아요.", "밥을 넣고 볶은 뒤 원하면 계란을 곁들여요."],
+        "name": "소고기 미역국",
+        "description": "소고기와 미역으로 만드는 익숙한 국 메뉴예요.",
+        "time": 30,
+        "ingredients": ["소고기", "미역"],
+        "difficulty": "보통",
+        "meal_type": "저녁",
+        "menu_type": "국",
+        "steps": ["미역을 불려 잘게 잘라요.", "소고기와 미역을 냄비에서 볶아요.", "물을 넣고 재료가 부드러워질 때까지 끓여요."],
     },
     {
-        "name": "야채계란말이", "emoji": "🥚", "time": 15,
-        "difficulty": "보통", "meals": ["아침", "점심", "저녁"],
-        "category": "한식",
-        "ingredients": ["계란", "당근", "대파"],
-        "description": "채소를 함께 먹기 좋은 반찬",
-        "steps": ["당근과 대파를 잘게 썰어요.", "계란에 채소를 섞어요.", "팬에 얇게 부어 말아가며 충분히 익혀요."],
+        "name": "단호박 수프",
+        "description": "단호박을 익혀 부드럽게 즐기는 메뉴예요.",
+        "time": 20,
+        "ingredients": ["단호박", "우유"],
+        "difficulty": "쉬움",
+        "meal_type": "아침",
+        "menu_type": "수프",
+        "steps": ["단호박의 씨를 제거하고 잘라요.", "단호박을 푹 익혀요.", "우유와 함께 갈아 부드럽게 끓여요."],
     },
     {
-        "name": "토마토 파스타", "emoji": "🍝", "time": 20,
-        "difficulty": "보통", "meals": ["점심", "저녁"],
-        "category": "양식",
-        "ingredients": ["파스타면", "토마토소스", "마늘", "양파"],
-        "description": "한 접시로 즐기는 간편한 양식",
-        "steps": ["파스타면을 삶아요.", "팬에 마늘과 양파를 볶고 소스를 넣어요.", "면을 넣고 소스와 섞어요."],
+        "name": "두부 채소전",
+        "description": "두부와 채소를 섞어 노릇하게 익히는 메뉴예요.",
+        "time": 20,
+        "ingredients": ["두부", "당근", "애호박", "달걀"],
+        "difficulty": "보통",
+        "meal_type": "점심",
+        "menu_type": "전",
+        "steps": ["두부의 물기를 빼고 으깨요.", "다진 채소와 달걀을 섞어요.", "작은 크기로 빚어 속까지 익혀요."],
     },
     {
-        "name": "크림 파스타", "emoji": "🍝", "time": 20,
-        "difficulty": "보통", "meals": ["점심", "저녁"],
-        "category": "양식",
-        "ingredients": ["파스타면", "생크림", "우유", "마늘"],
-        "description": "부드러운 소스로 만드는 파스타",
-        "steps": ["파스타면을 삶아요.", "팬에 마늘을 볶고 생크림과 우유를 넣어요.", "면을 넣고 소스가 어우러지도록 익혀요."],
+        "name": "닭고기 감자조림",
+        "description": "닭고기와 감자를 함께 익혀 만드는 반찬이에요.",
+        "time": 30,
+        "ingredients": ["닭고기", "감자", "당근"],
+        "difficulty": "보통",
+        "meal_type": "저녁",
+        "menu_type": "조림",
+        "steps": ["닭고기와 채소를 작은 크기로 썰어요.", "냄비에 재료와 물을 넣어요.", "양념을 조절하고 재료가 충분히 익을 때까지 조려요."],
     },
     {
-        "name": "야채볶음우동", "emoji": "🍜", "time": 15,
-        "difficulty": "쉬움", "meals": ["점심", "저녁"],
-        "category": "일식",
-        "ingredients": ["우동면", "양배추", "당근", "양파", "간장"],
-        "description": "채소와 면을 한 번에 먹는 메뉴",
-        "steps": ["채소를 썰어요.", "팬에 채소와 우동면을 볶아요.", "간장으로 간을 맞춰요."],
+        "name": "브로콜리 달걀볶음",
+        "description": "간단한 재료로 빠르게 준비할 수 있는 메뉴예요.",
+        "time": 15,
+        "ingredients": ["브로콜리", "달걀"],
+        "difficulty": "쉬움",
+        "meal_type": "아침",
+        "menu_type": "볶음",
+        "steps": ["브로콜리를 작게 잘라 충분히 익혀요.", "달걀을 풀어 팬에서 익혀요.", "브로콜리를 넣고 함께 볶아요."],
     },
     {
-        "name": "참치주먹밥", "emoji": "🍙", "time": 10,
-        "difficulty": "쉬움", "meals": ["아침", "점심", "간식"],
-        "category": "간편식",
-        "ingredients": ["밥", "참치", "김", "참기름"],
-        "description": "한입 크기로 만들어 먹기 편해요",
-        "steps": ["참치의 기름을 빼요.", "밥에 참치와 잘게 부순 김을 섞어요.", "한입 크기로 뭉쳐요."],
+        "name": "새우 채소죽",
+        "description": "새우와 채소를 넣어 끓이는 부드러운 죽이에요.",
+        "time": 25,
+        "ingredients": ["새우", "쌀", "당근", "애호박"],
+        "difficulty": "보통",
+        "meal_type": "아침",
+        "menu_type": "죽",
+        "steps": ["새우를 손질하고 잘게 다져요.", "채소와 불린 쌀을 냄비에 넣어요.", "물을 넣고 재료가 충분히 익도록 끓여요."],
     },
     {
-        "name": "감자수프", "emoji": "🥣", "time": 25,
-        "difficulty": "보통", "meals": ["아침", "점심", "간식"],
-        "category": "양식",
-        "ingredients": ["감자", "양파", "우유", "버터"],
-        "description": "부드럽고 따뜻하게 먹기 좋은 수프",
-        "steps": ["감자와 양파를 작게 썰어요.", "버터에 양파를 볶고 감자와 물을 넣어 익혀요.", "감자를 으깨고 우유를 넣어 끓여요."],
+        "name": "토마토 달걀볶음",
+        "description": "토마토와 달걀을 함께 익히는 간단한 메뉴예요.",
+        "time": 15,
+        "ingredients": ["토마토", "달걀"],
+        "difficulty": "쉬움",
+        "meal_type": "점심",
+        "menu_type": "볶음",
+        "steps": ["토마토를 작게 썰어요.", "달걀을 풀어 부드럽게 익혀요.", "토마토를 넣고 재료가 충분히 익도록 볶아요."],
     },
     {
-        "name": "소고기채소볶음", "emoji": "🥩", "time": 20,
-        "difficulty": "보통", "meals": ["점심", "저녁"],
-        "category": "한식",
-        "ingredients": ["소고기", "양파", "당근", "대파"],
-        "description": "고기와 채소를 함께 준비하는 반찬",
-        "steps": ["고기와 채소를 썰어요.", "팬에 소고기를 충분히 익혀요.", "채소를 넣고 함께 볶아요."],
+        "name": "소고기 채소주먹밥",
+        "description": "밥과 고기, 채소를 한입 크기로 뭉쳐 준비해요.",
+        "time": 20,
+        "ingredients": ["소고기", "밥", "당근", "김"],
+        "difficulty": "쉬움",
+        "meal_type": "점심",
+        "menu_type": "밥",
+        "steps": ["소고기와 당근을 잘게 다져 충분히 익혀요.", "밥과 재료를 골고루 섞어요.", "먹기 편한 크기로 뭉쳐요."],
     },
     {
-        "name": "닭가슴살 샐러드", "emoji": "🥗", "time": 15,
-        "difficulty": "쉬움", "meals": ["점심", "저녁"],
-        "category": "양식",
-        "ingredients": ["닭가슴살", "양상추", "토마토", "오이"],
-        "description": "채소와 단백질을 함께 챙기는 메뉴",
-        "steps": ["채소를 씻어 먹기 좋게 썰어요.", "닭가슴살을 속까지 충분히 익혀요.", "접시에 담고 드레싱을 곁들여요."],
+        "name": "양배추 감자수프",
+        "description": "양배추와 감자를 익혀 부드럽게 만든 수프예요.",
+        "time": 25,
+        "ingredients": ["양배추", "감자", "우유"],
+        "difficulty": "보통",
+        "meal_type": "저녁",
+        "menu_type": "수프",
+        "steps": ["양배추와 감자를 잘게 썰어요.", "냄비에서 재료를 충분히 익혀요.", "우유를 넣고 원하는 식감으로 갈아요."],
     },
     {
-        "name": "프렌치토스트", "emoji": "🍞", "time": 10,
-        "difficulty": "쉬움", "meals": ["아침", "간식"],
-        "category": "양식",
-        "ingredients": ["식빵", "계란", "우유", "버터"],
-        "description": "아침이나 간식으로 좋은 토스트",
-        "steps": ["계란과 우유를 섞어요.", "식빵을 적셔요.", "버터를 두른 팬에서 양면을 노릇하게 익혀요."],
+        "name": "두부 버섯덮밥",
+        "description": "두부와 버섯을 활용해 만드는 간단한 한 그릇 메뉴예요.",
+        "time": 20,
+        "ingredients": ["두부", "버섯", "밥", "양파"],
+        "difficulty": "쉬움",
+        "meal_type": "저녁",
+        "menu_type": "밥",
+        "steps": ["두부와 버섯, 양파를 작게 썰어요.", "팬에서 양파와 버섯을 익혀요.", "두부를 넣고 충분히 익힌 뒤 밥 위에 올려요."],
     },
     {
-        "name": "바나나 요거트", "emoji": "🍌", "time": 5,
-        "difficulty": "쉬움", "meals": ["아침", "간식"],
-        "category": "간편식",
-        "ingredients": ["바나나", "요거트", "견과류"],
-        "description": "불을 사용하지 않고 준비하는 간식",
-        "steps": ["바나나를 먹기 좋게 썰어요.", "요거트에 바나나를 올려요.", "원하면 잘게 부순 견과류를 곁들여요."],
+        "name": "바나나 오트밀",
+        "description": "오트밀과 바나나를 활용한 간단한 아침 메뉴예요.",
+        "time": 10,
+        "ingredients": ["오트밀", "바나나", "우유"],
+        "difficulty": "쉬움",
+        "meal_type": "아침",
+        "menu_type": "죽",
+        "steps": ["오트밀과 우유를 냄비에 넣어요.", "약한 불에서 부드럽게 끓여요.", "바나나를 으깨 넣고 잘 섞어요."],
     },
     {
-        "name": "김치콩나물국", "emoji": "🍲", "time": 20,
-        "difficulty": "보통", "meals": ["아침", "점심", "저녁"],
-        "category": "국·찌개",
-        "ingredients": ["김치", "콩나물", "대파", "육수"],
-        "description": "밥과 곁들이기 좋은 국물 메뉴",
-        "steps": ["김치를 먹기 좋게 썰어요.", "육수에 김치를 넣고 끓여요.", "콩나물을 충분히 익히고 대파를 넣어요."],
+        "name": "고구마 으깬 샐러드",
+        "description": "익힌 고구마를 으깨 간단하게 준비할 수 있어요.",
+        "time": 20,
+        "ingredients": ["고구마", "요거트"],
+        "difficulty": "쉬움",
+        "meal_type": "간식",
+        "menu_type": "샐러드",
+        "steps": ["고구마를 부드럽게 익혀요.", "껍질을 제거하고 곱게 으깨요.", "플레인 요거트를 소량 넣고 섞어요."],
     },
     {
-        "name": "두부구이", "emoji": "🍽️", "time": 10,
-        "difficulty": "쉬움", "meals": ["아침", "점심", "저녁"],
-        "category": "한식",
-        "ingredients": ["두부", "간장", "대파"],
-        "description": "재료가 적고 조리 과정이 간단한 반찬",
-        "steps": ["두부의 물기를 제거해요.", "팬에 두부를 앞뒤로 구워요.", "잘게 썬 대파와 간장을 곁들여요."],
-    },
-    {
-        "name": "고구마와 우유", "emoji": "🍠", "time": 15,
-        "difficulty": "쉬움", "meals": ["아침", "간식"],
-        "category": "간편식",
-        "ingredients": ["고구마", "우유"],
-        "description": "간단하게 준비할 수 있는 메뉴",
-        "steps": ["고구마를 깨끗이 씻어요.", "전자레인지나 찜기로 속까지 익혀요.", "우유와 함께 먹어요."],
+        "name": "채소 달걀국",
+        "description": "채소와 달걀을 넣어 빠르게 끓이는 국이에요.",
+        "time": 15,
+        "ingredients": ["달걀", "당근", "애호박"],
+        "difficulty": "쉬움",
+        "meal_type": "저녁",
+        "menu_type": "국",
+        "steps": ["당근과 애호박을 잘게 썰어요.", "물을 끓여 채소를 충분히 익혀요.", "풀어 둔 달걀을 넣고 익혀요."],
     },
 ]
 
-ALL_INGREDIENTS = sorted({
+# -----------------------------
+# 세션 상태 초기화
+# -----------------------------
+if "favorites" not in st.session_state:
+    st.session_state.favorites = []
+
+if "recommended_menu" not in st.session_state:
+    st.session_state.recommended_menu = None
+
+# -----------------------------
+# 깔끔한 디자인
+# -----------------------------
+st.markdown(
+    """
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap');
+
+    html, body, [class*="css"] {
+        font-family: 'Noto Sans KR', sans-serif;
+    }
+
+    .stApp {
+        background-color: #F7F8F6;
+    }
+
+    [data-testid="stSidebar"] {
+        background-color: #FFFFFF;
+        border-right: 1px solid #E7EAE5;
+    }
+
+    .block-container {
+        max-width: 1100px;
+        padding-top: 2rem;
+        padding-bottom: 3rem;
+    }
+
+    .hero {
+        background: #FFFFFF;
+        border: 1px solid #E7EAE5;
+        border-radius: 16px;
+        padding: 28px 30px;
+        margin-bottom: 24px;
+    }
+
+    .hero-label {
+        color: #68816D;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        margin-bottom: 8px;
+    }
+
+    .hero-title {
+        color: #202820;
+        font-size: 29px;
+        font-weight: 700;
+        line-height: 1.4;
+        margin: 0 0 8px 0;
+    }
+
+    .hero-description {
+        color: #70776F;
+        font-size: 14px;
+        line-height: 1.7;
+        margin: 0;
+    }
+
+    .menu-card {
+        background: #FFFFFF;
+        border: 1px solid #E7EAE5;
+        border-radius: 14px;
+        padding: 20px;
+        margin-bottom: 14px;
+    }
+
+    .menu-name {
+        color: #26342A;
+        font-size: 19px;
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+
+    .menu-description {
+        color: #737A72;
+        font-size: 13px;
+        line-height: 1.6;
+        margin-bottom: 14px;
+    }
+
+    .menu-meta {
+        color: #566558;
+        font-size: 12px;
+        line-height: 2;
+    }
+
+    .section-title {
+        color: #26342A;
+        font-size: 20px;
+        font-weight: 700;
+        margin: 18px 0 12px 0;
+    }
+
+    div.stButton > button {
+        border-radius: 9px;
+        border: 1px solid #D9E2D8;
+        font-weight: 600;
+        min-height: 42px;
+    }
+
+    div.stButton > button[kind="primary"] {
+        background-color: #617B65;
+        border-color: #617B65;
+        color: white;
+    }
+
+    div.stButton > button[kind="primary"]:hover {
+        background-color: #4E6852;
+        border-color: #4E6852;
+        color: white;
+    }
+
+    [data-testid="stMetric"] {
+        background: white;
+        border: 1px solid #E7EAE5;
+        padding: 14px;
+        border-radius: 12px;
+    }
+
+    h1, h2, h3 {
+        color: #26342A;
+    }
+
+    .footer {
+        color: #8A9189;
+        font-size: 12px;
+        text-align: center;
+        padding-top: 28px;
+    }
+    </style>
+
+    <div class="hero">
+        <div class="hero-label">URIKKINI · DAILY MENU</div>
+        <div class="hero-title">오늘의 식사, 우리끼니</div>
+        <p class="hero-description">
+            바쁜 육아 중에도 식사 준비를 조금 더 쉽게.<br>
+            조리 시간과 재료에 맞는 메뉴를 찾아보세요.
+        </p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+# -----------------------------
+# 사이드바 필터
+# -----------------------------
+st.sidebar.title("메뉴 조건")
+st.sidebar.caption("원하는 조건을 선택해 주세요.")
+
+time_options = {
+    "전체": 999,
+    "10분 이내": 10,
+    "15분 이내": 15,
+    "20분 이내": 20,
+    "30분 이내": 30,
+}
+
+selected_time = st.sidebar.selectbox(
+    "조리 시간",
+    list(time_options.keys()),
+)
+
+all_ingredients = sorted({
     ingredient
     for menu in MENUS
     for ingredient in menu["ingredients"]
 })
 
-# -----------------------------
-# 디자인
-# -----------------------------
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;600;700&display=swap');
-
-.stApp {
-    background-color: #FFF9F5;
-    color: #514641;
-    font-family: 'Noto Sans KR', sans-serif;
-}
-.block-container {
-    max-width: 1100px;
-    padding-top: 2rem;
-    padding-bottom: 3rem;
-}
-h1, h2, h3 {
-    font-family: 'Jua', sans-serif !important;
-    color: #75534D !important;
-}
-.hero {
-    background: linear-gradient(135deg, #FFE6EB, #FFF0D9 58%, #E5F4E8);
-    border: 2px solid #FFFFFF;
-    border-radius: 26px;
-    padding: 28px;
-    margin-bottom: 24px;
-    box-shadow: 0 5px 18px #E8C9C333;
-}
-.hero h1 {
-    font-size: 2.3rem;
-    color: #9B5969 !important;
-    margin: 8px 0 12px 0;
-}
-.hero p {
-    color: #795D58;
-    line-height: 1.8;
-    margin: 0;
-}
-.sticker {
-    font-size: 2rem;
-}
-.tag {
-    display: inline-block;
-    background: #FFFFFFB8;
-    color: #A35E72;
-    border-radius: 30px;
-    padding: 6px 12px;
-    font-size: 0.82rem;
-    margin-top: 10px;
-}
-div[data-testid="stVerticalBlockBorderWrapper"] {
-    background: #FFFFFF;
-    border: 1px solid #F4E3DD;
-    border-radius: 20px;
-    box-shadow: 0 4px 14px #DCC4B51A;
-}
-div.stButton > button {
-    border-radius: 14px;
-    border: 1px solid #F0D5D9;
-    background: #FFF0F2;
-    color: #965C68;
-    font-weight: 600;
-}
-div.stButton > button:hover {
-    border-color: #E9AAB9;
-    background: #FFE1E8;
-    color: #814858;
-}
-div.stButton > button[kind="primary"],
-div.stFormSubmitButton > button {
-    background: #E99BAC;
-    border: none;
-    color: white;
-    border-radius: 15px;
-    font-weight: 700;
-    min-height: 44px;
-}
-div.stButton > button[kind="primary"]:hover,
-div.stFormSubmitButton > button:hover {
-    background: #D98196;
-    color: white;
-}
-div[data-baseweb="select"] > div {
-    border-radius: 12px;
-    border-color: #EBD8D1;
-}
-div[data-testid="stExpander"] {
-    background: #FFFAF8;
-    border: 1px solid #F2E3DD;
-    border-radius: 13px;
-}
-div[data-testid="stCaptionContainer"] {
-    color: #9B8580;
-}
-hr {
-    border-color: #F0DFD8;
-}
-@media (max-width: 640px) {
-    .hero { padding: 22px 18px; }
-    .hero h1 { font-size: 1.8rem; }
-}
-</style>
-
-<div class="hero">
-    <div class="sticker">🧸 🍓 🥣</div>
-    <div class="tag">♡ 육아맘 · 육아대디를 위한 레시피 ♡</div>
-    <h1>오늘 뭐 먹지? 🌷</h1>
-    <p>아가 돌보느라 바쁜 하루에도</p>
-    <p><b>내 밥은 맛있고 간편하게!</b> 🍚</p>
-    <p>냉장고 속 재료로 오늘의 메뉴를 찾아봐요.</p>
-</div>
-""", unsafe_allow_html=True)
-
-# -----------------------------
-# 세션 상태
-# -----------------------------
-if "favorites" not in st.session_state:
-    st.session_state.favorites = []
-
-if "filters" not in st.session_state:
-    st.session_state.filters = {
-        "max_time": 20,
-        "meal_type": "전체",
-        "difficulty": "전체",
-        "menu_type": "전체",
-        "ingredients": [],
-        "strict_ingredients": False,
-    }
-
-if "recommendation_seed" not in st.session_state:
-    st.session_state.recommendation_seed = 0
-
-# -----------------------------
-# 화면 탭
-# -----------------------------
-tab_recommend, tab_favorites = st.tabs(
-    ["🍓 메뉴 추천", "💗 나의 레시피 북"]
+selected_ingredients = st.sidebar.multiselect(
+    "사용할 수 있는 재료",
+    all_ingredients,
+    help="선택한 재료가 모두 포함된 메뉴를 찾습니다.",
 )
+
+ingredient_match = st.sidebar.checkbox(
+    "선택한 재료가 모두 포함된 메뉴만 보기",
+    value=True,
+)
+
+selected_difficulty = st.sidebar.selectbox(
+    "조리 난이도",
+    ["전체", "쉬움", "보통"],
+)
+
+selected_meal_type = st.sidebar.selectbox(
+    "식사 시간",
+    ["전체", "아침", "점심", "저녁", "간식"],
+)
+
+all_menu_types = sorted({menu["menu_type"] for menu in MENUS})
+selected_menu_type = st.sidebar.selectbox(
+    "메뉴 종류",
+    ["전체"] + all_menu_types,
+)
+
+st.sidebar.divider()
+st.sidebar.caption("필터를 변경하면 조건에 맞는 메뉴가 표시됩니다.")
+
+# -----------------------------
+# 메뉴 필터링
+# -----------------------------
+filtered_menus = []
+
+for menu in MENUS:
+    if menu["time"] > time_options[selected_time]:
+        continue
+
+    if selected_difficulty != "전체" and menu["difficulty"] != selected_difficulty:
+        continue
+
+    if selected_meal_type != "전체" and menu["meal_type"] != selected_meal_type:
+        continue
+
+    if selected_menu_type != "전체" and menu["menu_type"] != selected_menu_type:
+        continue
+
+    if selected_ingredients:
+        menu_ingredients = set(menu["ingredients"])
+        selected_set = set(selected_ingredients)
+
+        if ingredient_match and not selected_set.issubset(menu_ingredients):
+            continue
+
+        if not ingredient_match and not selected_set.intersection(menu_ingredients):
+            continue
+
+    filtered_menus.append(menu)
+
+# -----------------------------
+# 상단 통계
+# -----------------------------
+metric1, metric2, metric3 = st.columns(3)
+
+with metric1:
+    st.metric("추천 가능한 메뉴", f"{len(filtered_menus)}개")
+
+with metric2:
+    st.metric("등록된 메뉴", f"{len(MENUS)}개")
+
+with metric3:
+    st.metric("즐겨찾기", f"{len(st.session_state.favorites)}개")
 
 # -----------------------------
 # 메뉴 추천
 # -----------------------------
-with tab_recommend:
-    st.subheader("🌷 어떤 메뉴가 필요하세요?")
-    st.caption("오늘의 상황을 골라주면 맛있는 메뉴를 찾아줄게요 ♡")
+st.markdown('<div class="section-title">메뉴 추천</div>', unsafe_allow_html=True)
+st.caption("선택한 조건에 맞는 메뉴를 확인하거나, 메뉴 하나를 무작위로 추천받을 수 있어요.")
 
-    with st.form("menu_filter_form"):
-        left, right = st.columns(2)
+recommend_col, reset_col = st.columns([2, 1])
 
-        with left:
-            max_time = st.selectbox(
-                "⏰ 요리 가능 시간",
-                [10, 20, 30],
-                index=1,
-                format_func=lambda x: f"{x}분 이내",
+with recommend_col:
+    if st.button("오늘의 메뉴 추천받기", type="primary", use_container_width=True):
+        if filtered_menus:
+            st.session_state.recommended_menu = random.choice(filtered_menus)
+        else:
+            st.session_state.recommended_menu = None
+
+with reset_col:
+    if st.button("추천 초기화", use_container_width=True):
+        st.session_state.recommended_menu = None
+
+if st.session_state.recommended_menu:
+    recommended = st.session_state.recommended_menu
+
+    # 현재 필터 조건에 맞지 않는 메뉴가 남아 있으면 추천 표시를 해제
+    if recommended not in filtered_menus:
+        st.session_state.recommended_menu = None
+    else:
+        st.success(f"오늘의 추천 메뉴는 **{recommended['name']}** 입니다.")
+
+        with st.container(border=True):
+            st.subheader(recommended["name"])
+            st.write(recommended["description"])
+            st.write(
+                f"**조리 시간:** 약 {recommended['time']}분  ·  "
+                f"**난이도:** {recommended['difficulty']}"
             )
-            meal_type = st.selectbox(
-                "🍚 식사 종류",
-                ["전체", "아침", "점심", "저녁", "간식"],
-            )
-            difficulty = st.selectbox(
-                "👩‍🍳 조리 난이도",
-                ["전체", "쉬움", "보통"],
-            )
+            st.write("**재료:** " + ", ".join(recommended["ingredients"]))
 
-        with right:
-            menu_type = st.selectbox(
-                "🥗 메뉴 종류",
-                ["전체", "한식", "양식", "일식", "간편식", "국·찌개"],
-            )
-            ingredients = st.multiselect(
-                "🧺 집에 있는 재료",
-                ALL_INGREDIENTS,
-                placeholder="재료를 여러 개 선택해 보세요",
-            )
-            strict_ingredients = st.checkbox(
-                "선택한 재료만으로 만들 수 있는 메뉴 우선",
-                value=False,
-            )
+            with st.expander("만드는 방법"):
+                for index, step in enumerate(recommended["steps"], start=1):
+                    st.write(f"{index}. {step}")
 
-        submitted = st.form_submit_button(
-            "🍓 내 조건으로 메뉴 찾기",
-            use_container_width=True,
-            type="primary",
-        )
+            if recommended["name"] not in st.session_state.favorites:
+                if st.button(
+                    "즐겨찾기에 추가",
+                    key=f"recommend_fav_{recommended['name']}",
+                ):
+                    st.session_state.favorites.append(recommended["name"])
+                    st.rerun()
+            else:
+                st.caption("이미 즐겨찾기에 추가된 메뉴예요.")
 
-    if submitted:
-        st.session_state.filters = {
-            "max_time": max_time,
-            "meal_type": meal_type,
-            "difficulty": difficulty,
-            "menu_type": menu_type,
-            "ingredients": ingredients,
-            "strict_ingredients": strict_ingredients,
-        }
-        st.session_state.recommendation_seed += 1
+# -----------------------------
+# 메뉴 목록
+# -----------------------------
+st.divider()
+st.markdown('<div class="section-title">조건에 맞는 메뉴</div>', unsafe_allow_html=True)
 
-    filters = st.session_state.filters
-    results = []
+if not filtered_menus:
+    st.warning(
+        "선택한 조건에 맞는 메뉴가 없어요. "
+        "조리 시간을 늘리거나 재료 조건을 줄여 보세요."
+    )
+else:
+    st.caption(f"총 {len(filtered_menus)}개의 메뉴를 찾았어요.")
 
-    try:
-        for menu in MENUS:
-            if menu["time"] > filters["max_time"]:
-                continue
+    for menu in filtered_menus:
+        with st.container(border=True):
+            left, right = st.columns([4, 1])
 
-            if (
-                filters["meal_type"] != "전체"
-                and filters["meal_type"] not in menu["meals"]
-            ):
-                continue
-
-            if (
-                filters["difficulty"] != "전체"
-                and menu["difficulty"] != filters["difficulty"]
-            ):
-                continue
-
-            if (
-                filters["menu_type"] != "전체"
-                and menu["category"] != filters["menu_type"]
-            ):
-                continue
-
-            selected = filters["ingredients"]
-            matched = [
-                item for item in selected
-                if item in menu["ingredients"]
-            ]
-
-            if selected and not matched:
-                continue
-
-            missing = [
-                item for item in menu["ingredients"]
-                if item not in selected
-            ] if selected else []
-
-            results.append({
-                **menu,
-                "matched_count": len(matched),
-                "missing": missing,
-            })
-
-        if filters["ingredients"]:
-            results.sort(
-                key=lambda item: (
-                    len(item["missing"]),
-                    -item["matched_count"],
-                    item["time"],
+            with left:
+                st.markdown(
+                    f'<div class="menu-name">{menu["name"]}</div>',
+                    unsafe_allow_html=True,
                 )
-            )
-        else:
-            results.sort(key=lambda item: (item["time"], item["name"]))
+                st.markdown(
+                    f'<div class="menu-description">{menu["description"]}</div>',
+                    unsafe_allow_html=True,
+                )
+                st.markdown(
+                    f'<div class="menu-meta">'
+                    f'조리 시간 약 {menu["time"]}분　|　'
+                    f'난이도 {menu["difficulty"]}<br>'
+                    f'식사 {menu["meal_type"]}　|　'
+                    f'종류 {menu["menu_type"]}<br>'
+                    f'재료: {", ".join(menu["ingredients"])}'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
 
-        if filters["strict_ingredients"] and filters["ingredients"]:
-            exact = [item for item in results if not item["missing"]]
-            results = exact
+            with right:
+                is_favorite = menu["name"] in st.session_state.favorites
 
-        if results:
-            random_seed = st.session_state.recommendation_seed
-            if random_seed:
-                random.Random(random_seed).shuffle(results)
+                button_label = "★ 즐겨찾기" if is_favorite else "☆ 즐겨찾기"
 
-            st.markdown("---")
-            st.subheader(f"💗 오늘의 추천 메뉴 ({len(results)}개)")
-            st.caption("마음에 드는 메뉴를 저장해 두세요!")
+                if st.button(
+                    button_label,
+                    key=f"favorite_{menu['name']}",
+                    use_container_width=True,
+                ):
+                    if is_favorite:
+                        st.session_state.favorites.remove(menu["name"])
+                    else:
+                        st.session_state.favorites.append(menu["name"])
+                    st.rerun()
 
-            for start in range(0, len(results), 2):
-                columns = st.columns(2)
-
-                for column, menu in zip(columns, results[start:start + 2]):
-                    with column:
-                        with st.container(border=True):
-                            st.markdown(f"### {menu['emoji']} {menu['name']}")
-                            st.caption(f"🍓 {menu['description']}")
-
-                            st.markdown(
-                                f"⏱️ **{menu['time']}분**　"
-                                f"🌼 **{menu['difficulty']}**"
-                            )
-                            st.caption(f"🍽️ 메뉴 종류: {menu['category']}")
-
-                            if filters["meal_type"] == "전체":
-                                st.caption(
-                                    "추천 식사: " + ", ".join(menu["meals"])
-                                )
-
-                            if filters["ingredients"]:
-                                if menu["missing"]:
-                                    st.caption(
-                                        "🧺 추가로 필요한 재료: "
-                                        + ", ".join(menu["missing"])
-                                    )
-                                else:
-                                    st.caption("💚 선택한 재료로 만들 수 있어요!")
-
-                            with st.expander("🥣 재료와 만드는 방법"):
-                                st.markdown("**필요한 재료**")
-                                st.write(", ".join(menu["ingredients"]))
-                                st.markdown("**만드는 방법**")
-                                for number, step in enumerate(menu["steps"], 1):
-                                    st.write(f"{number}. {step}")
-
-                            if menu["name"] in st.session_state.favorites:
-                                if st.button(
-                                    "💗 저장됨 · 취소하기",
-                                    key=f"remove_{menu['name']}",
-                                    use_container_width=True,
-                                ):
-                                    st.session_state.favorites.remove(menu["name"])
-                                    st.rerun()
-                            else:
-                                if st.button(
-                                    "♡ 메뉴 저장하기",
-                                    key=f"save_{menu['name']}",
-                                    use_container_width=True,
-                                ):
-                                    st.session_state.favorites.append(menu["name"])
-                                    st.rerun()
-
-            if st.button("🔄 같은 조건으로 다시 추천받기"):
-                st.session_state.recommendation_seed += 1
-                st.rerun()
-
-        else:
-            st.warning(
-                "앗, 조건에 맞는 메뉴가 없어요 🥺 "
-                "요리 시간을 늘리거나 재료 조건을 줄여 보세요!"
-            )
-
-    except Exception as error:
-        st.error("메뉴를 불러오지 못했어요. 조건을 다시 선택해 주세요.")
-        st.caption(f"오류 확인용: {error}")
+                with st.expander("만드는 방법"):
+                    for index, step in enumerate(menu["steps"], start=1):
+                        st.write(f"{index}. {step}")
 
 # -----------------------------
 # 즐겨찾기
 # -----------------------------
-with tab_favorites:
-    st.subheader("💗 나의 레시피 북")
-    st.caption("마음에 드는 메뉴를 모아두고 언제든 확인해요 ♡")
+st.divider()
+st.markdown('<div class="section-title">즐겨찾기 메뉴</div>', unsafe_allow_html=True)
 
+if not st.session_state.favorites:
+    st.info("아직 즐겨찾기에 추가한 메뉴가 없어요.")
+else:
     favorite_menus = [
         menu for menu in MENUS
         if menu["name"] in st.session_state.favorites
     ]
 
-    if not favorite_menus:
-        st.info("아직 저장한 메뉴가 없어요 🍓 메뉴 카드에서 하트를 눌러 보세요!")
-    else:
-        for menu in favorite_menus:
-            with st.container(border=True):
-                st.markdown(f"### {menu['emoji']} {menu['name']}")
+    for menu in favorite_menus:
+        with st.container(border=True):
+            col1, col2 = st.columns([4, 1])
+
+            with col1:
+                st.markdown(f"**{menu['name']}**")
                 st.caption(
-                    f"⏱️ {menu['time']}분　·　"
-                    f"🌼 {menu['difficulty']}　·　"
-                    f"🍽️ {menu['category']}"
+                    f"약 {menu['time']}분 · {menu['difficulty']} · "
+                    f"{menu['menu_type']}"
                 )
-                st.write("🧺 재료: " + ", ".join(menu["ingredients"]))
 
-                with st.expander("🥣 만드는 방법 보기"):
-                    for number, step in enumerate(menu["steps"], 1):
-                        st.write(f"{number}. {step}")
-
+            with col2:
                 if st.button(
-                    "♡ 저장 목록에서 빼기",
-                    key=f"favorite_remove_{menu['name']}",
+                    "삭제",
+                    key=f"remove_{menu['name']}",
+                    use_container_width=True,
                 ):
                     st.session_state.favorites.remove(menu["name"])
                     st.rerun()
 
-st.markdown("---")
+# -----------------------------
+# 안내 및 푸터
+# -----------------------------
+st.divider()
+
+with st.expander("이용 전 확인해 주세요"):
+    st.write(
+        "이 앱은 메뉴 아이디어를 제공하기 위한 서비스입니다. "
+        "영유아에게 제공할 때는 아이의 월령과 발달 상태에 맞게 "
+        "재료의 크기와 식감을 조절해 주세요."
+    )
+    st.write(
+        "달걀, 우유, 밀, 생선, 갑각류 등 알레르기를 일으킬 수 있는 "
+        "재료는 아이의 알레르기 여부를 확인한 뒤 사용하세요. "
+        "고기와 생선, 달걀은 충분히 익혀 주세요."
+    )
+    st.write(
+        "메뉴에 표시된 조리 시간은 예상 시간이며, "
+        "재료 손질이나 조리 환경에 따라 달라질 수 있습니다."
+    )
+
 st.markdown(
-    "<div style='text-align:center;color:#B49A91;'>"
-    "🌷 오늘도 나를 위한 한 끼, 잊지 말기 ♡<br>"
-    "조리시간은 예상치이며, 알레르기와 식재료 상태를 확인해 주세요."
-    "</div>",
+    '<div class="footer">우리끼니 · 매일의 식사를 조금 더 편하게</div>',
     unsafe_allow_html=True,
 )
