@@ -1,116 +1,240 @@
-        placeholder="예: 천안 불당동, 서울 마포구",
-        help="시·구·동 또는 동네 이름을 입력해 주세요.",
-    )
-    c1, c2 = st.columns(2)
-    with c1:
-        food_type = st.selectbox(
-            "먹고 싶은 음식",
-            ["전체", "한식", "양식", "일식", "중식", "분식", "카페·브런치", "고기·구이"],
-        )
-        baby_age = st.selectbox(
-            "아기 월령",
-            ["선택 안 함", "0~5개월", "6~11개월", "12~23개월", "24개월 이상"],
-            help="월령에 따라 필요한 식사 환경이 다를 수 있어요.",
-        )
-    with c2:
-        occasion = st.selectbox(
-            "오늘의 식사 상황",
-            ["편안한 한 끼", "가족 외식", "빠른 식사", "브런치·카페"],
-        )
-        travel = st.selectbox(
-            "이동 방식",
-            ["상관없음", "유모차를 가져가요", "대중교통으로 이동해요", "주차가 필요해요"],
-        )
 
-    st.markdown("**있으면 좋은 편의시설**")
-    f1, f2, f3 = st.columns(3)
-    with f1:
-        high_chair = st.checkbox("유아용 의자")
-    with f2:
-        baby_tableware = st.checkbox("아기 식기")
-    with f3:
-        stroller = st.checkbox("유모차 이용 편리")
+import streamlit as st
+import streamlit.components.v1 as components
+from urllib.parse import urlencode
 
-    submitted = st.form_submit_button("우리 가족 식당 찾기", type="primary", use_container_width=True)
+# ---------- 기본 설정 ----------
+st.set_page_config(
+    page_title="아기랑 편한 한 끼",
+    page_icon="👶",
+    layout="wide",
+)
 
-if submitted:
-    if not location.strip():
-        st.warning("먼저 지역을 입력해 주세요. 예: 천안 불당동")
-    else:
-        # 검색어를 명확하게 구성하고 URL 인코딩
-        terms = [location.strip(), "아기 동반 가능 식당"]
-        if food_type != "전체":
-            terms.append(food_type)
-        if high_chair:
-            terms.append("유아용 의자")
-        if baby_tableware:
-            terms.append("아기 식기")
-        if stroller:
-            terms.append("유모차")
-        if travel == "주차가 필요해요":
-            terms.append("주차 가능")
-        elif travel == "유모차를 가져가요":
-            terms.append("유모차 접근 가능")
-        elif travel == "대중교통으로 이동해요":
-            terms.append("대중교통 접근")
-        if occasion == "브런치·카페":
-            terms.append("브런치 카페")
-        elif occasion == "가족 외식":
-            terms.append("가족 외식")
-        elif occasion == "빠른 식사":
-            terms.append("식사")
-        search_query = " ".join(terms)
-        encoded_query = quote_plus(search_query)
-        map_url = f"https://www.google.com/maps/search/?api=1&query={encoded_query}"
-        naver_url = f"https://map.naver.com/p/search/{quote_plus(search_query)}"
+# ---------- 세션 상태 초기화 ----------
+if "restaurant_query" not in st.session_state:
+    st.session_state["restaurant_query"] = ""
 
-        st.markdown("---")
-        st.markdown('<div class="section-title">검색 결과로 이동하기</div>', unsafe_allow_html=True)
-        st.write(f"**검색 조건:** {search_query}")
-        st.info(
-            "아래 링크에서 실제 식당과 최근 리뷰를 확인해 주세요. "
-            "유아용 의자·아기 식기·유모차 이용 여부는 매장마다 다르므로 방문 전 전화로 확인하는 것이 좋아요."
-        )
-        b1, b2 = st.columns(2)
-        with b1:
-            st.link_button("🗺️ Google 지도에서 찾기", map_url, use_container_width=True)
-        with b2:
-            st.link_button("📍 네이버 지도에서 찾기", naver_url, use_container_width=True)
+if "restaurant_region" not in st.session_state:
+    st.session_state["restaurant_region"] = ""
 
-        st.markdown('<div class="section-title">방문 전 체크리스트</div>', unsafe_allow_html=True)
-        checks = [
-            "유아용 의자 또는 아기용 좌석이 있는지",
-            "아기 식기와 물을 제공하는지",
-            "유모차를 둘 공간과 출입구 턱이 있는지",
-            "기저귀 교환 공간과 아기 동반 화장실이 있는지",
-            "아기 식사 시간에 맞춰 대기 시간을 줄일 수 있는지",
-        ]
-        for item in checks:
-            st.checkbox(item, key="check_" + item)
+# ---------- 화면 디자인 ----------
+st.markdown(
+    """
+    <style>
+        .block-container {
+            max-width: 1100px;
+            padding-top: 2rem;
+            padding-bottom: 3rem;
+        }
 
-# 정적 도움말 영역
-st.markdown("---")
-st.markdown('<div class="section-title">우리끼니 사용 팁</div>', unsafe_allow_html=True)
-cols = st.columns(3)
-tips = [
-    ("🪑", "자리부터 확인하기", "유아용 의자와 테이블 간격은 매장마다 다르니 예약 전 확인해요."),
-    ("🥣", "아기 식사는 따로 확인하기", "월령에 맞는 음식과 알레르기 유발 식재료를 직원에게 문의해요."),
-    ("🧸", "혼잡 시간 피하기", "가능하다면 식사 피크 시간대를 피해 여유롭게 방문해요."),
-]
-for col, (emoji, title, desc) in zip(cols, tips):
-    with col:
-        st.markdown(
-            f'<div class="soft-card"><div style="font-size:1.6rem">{emoji}</div>'
-            f'<div style="font-weight:800;color:#28382B;margin:8px 0">{title}</div>'
-            f'<div style="color:#687064;font-size:.9rem;line-height:1.6">{desc}</div></div>',
-            unsafe_allow_html=True,
-        )
+        .hero {
+            padding: 1.6rem;
+            border-radius: 18px;
+            background: linear-gradient(120deg, #fff0e6, #fff8dc);
+            margin-bottom: 1.2rem;
+        }
+
+        .hero h1 {
+            color: #573b2a;
+            margin-bottom: 0.5rem;
+        }
+
+        .hero p {
+            color: #654c3a;
+            font-size: 1.05rem;
+        }
+
+        .info-card {
+            border: 1px solid #eee3d9;
+            padding: 1rem;
+            border-radius: 12px;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 st.markdown(
     """
-    <p class="note" style="text-align:center; margin-top:28px;">
-    우리끼니는 식당 검색을 돕는 서비스예요. 편의시설·영업시간·아기 메뉴는 방문 전에 매장에 확인해 주세요.
-    </p>
+    <div class="hero">
+        <h1>👶 아기랑 편한 한 끼</h1>
+        <p>아이와 함께 외식하는 부모님을 위한 식당 검색 도우미</p>
+        <p>우리 가족에게 맞는 식당을 찾아보고 지도에서 위치를 확인해 보세요.</p>
+    </div>
     """,
     unsafe_allow_html=True,
+)
+
+# ---------- 검색 조건 ----------
+st.subheader("🔎 우리 가족에게 맞는 식당 찾기")
+
+food_options = [
+    "전체 음식",
+    "한식",
+    "국수·면 요리",
+    "고기·구이",
+    "돈가스·일식",
+    "중식",
+    "양식·파스타",
+    "분식",
+    "카페·브런치",
+]
+
+food_terms = {
+    "전체 음식": "식당",
+    "한식": "한식 식당",
+    "국수·면 요리": "국수 면 요리 식당",
+    "고기·구이": "고기 구이 식당",
+    "돈가스·일식": "돈가스 일식 식당",
+    "중식": "중식당",
+    "양식·파스타": "양식 파스타 식당",
+    "분식": "분식집",
+    "카페·브런치": "브런치 카페",
+}
+
+with st.form("restaurant_search"):
+    col1, col2 = st.columns(2)
+
+    with col1:
+        region = st.text_input(
+            "📍 검색할 지역",
+            value="충남 천안시",
+            help="예: 천안시 불당동, 천안역 주변, 서울 강남구",
+        )
+
+        food = st.selectbox(
+            "🍚 먹고 싶은 음식",
+            food_options,
+        )
+
+    with col2:
+        needs = st.multiselect(
+            "🍼 중요하게 생각하는 편의시설",
+            [
+                "아기 의자",
+                "유아 메뉴",
+                "유모차 이용 편의",
+                "주차 가능",
+                "넓은 좌석",
+                "놀이 공간",
+            ],
+            help="선택한 조건은 지도 검색어에 반영됩니다. 실제 시설은 식당에 확인하세요.",
+        )
+
+        extra = st.text_input(
+            "추가 검색어 (선택)",
+            placeholder="예: 룸, 조용한 식당, 예약 가능",
+        )
+
+    submitted = st.form_submit_button(
+        "식당 검색하기",
+        type="primary",
+        use_container_width=True,
+    )
+
+    if submitted:
+        if not region.strip():
+            st.session_state["restaurant_query"] = ""
+            st.session_state["restaurant_region"] = ""
+            st.error("검색할 지역을 입력해 주세요.")
+        else:
+            # 검색어를 만들고 세션 상태에 저장
+            search_parts = [
+                region.strip(),
+                food_terms[food],
+                *needs,
+                extra.strip(),
+            ]
+
+            query = " ".join(
+                part for part in search_parts if part
+            )
+
+            st.session_state["restaurant_query"] = query
+            st.session_state["restaurant_region"] = region.strip()
+
+# ---------- 지도와 검색 결과 ----------
+query = st.session_state["restaurant_query"]
+saved_region = st.session_state["restaurant_region"]
+
+if query:
+    st.divider()
+    st.subheader("🗺️ 식당 위치 지도")
+    st.write(f"**검색 지역:** {saved_region}")
+    st.caption(f"지도 검색어: {query}")
+
+    # Google 지도 검색 URL
+    search_url = (
+        "https://www.google.com/maps/search/?"
+        + urlencode({"api": "1", "query": query})
+    )
+
+    # Google 지도 삽입용 URL
+    embed_url = (
+        "https://maps.google.com/maps?"
+        + urlencode({
+            "q": query,
+            "output": "embed",
+        })
+    )
+
+    try:
+        components.iframe(
+            embed_url,
+            height=480,
+            scrolling=True,
+        )
+    except Exception:
+        st.warning(
+            "지도를 화면에 표시하지 못했습니다. "
+            "아래 버튼으로 지도에서 검색해 주세요."
+        )
+
+    st.link_button(
+        "📍 Google 지도에서 식당 목록과 길찾기 보기",
+        search_url,
+        use_container_width=True,
+    )
+
+    st.info(
+        "지도에서 식당을 선택하면 주소와 길찾기를 확인할 수 있습니다. "
+        "검색 결과와 운영 정보는 지도 서비스에 따라 달라질 수 있습니다."
+    )
+
+else:
+    st.info(
+        "위에서 지역과 음식 종류를 선택한 뒤 "
+        "'식당 검색하기'를 누르면 지도 검색 결과가 표시됩니다."
+    )
+
+# ---------- 방문 전 체크리스트 ----------
+st.divider()
+st.subheader("💛 방문 전 확인 체크리스트")
+
+st.caption(
+    "방문 전에 직접 확인해 보세요. "
+    "체크한 항목은 식당의 실제 시설을 보장하지 않습니다."
+)
+
+c1, c2, c3 = st.columns(3)
+
+with c1:
+    st.markdown("**🍼 아이 편의**")
+    st.checkbox("아기 의자 여부 확인", key="check_baby_chair")
+    st.checkbox("유아 식기·메뉴 확인", key="check_kids_menu")
+
+with c2:
+    st.markdown("**🚗 이동 편의**")
+    st.checkbox("주차장 여부 확인", key="check_parking")
+    st.checkbox("유모차 진입 가능 여부 확인", key="check_stroller")
+
+with c3:
+    st.markdown("**🍽️ 식사 환경**")
+    st.checkbox("유아 동반 좌석 확인", key="check_seating")
+    st.checkbox("대기 시간·예약 여부 확인", key="check_reservation")
+
+st.caption(
+    "※ 이 앱은 지도 검색을 도와주는 도구입니다. "
+    "방문 전에 식당에 전화해 아기 의자, 유아 메뉴, "
+    "영업시간 등을 확인하세요."
 )
