@@ -1,248 +1,128 @@
 import streamlit as st
-from datetime import date
-from collections import Counter
-from pathlib import Path
-import csv
-import io
+from datetime import date, timedelta
 import random
 import hashlib
+import json
+import re
 
-st.set_page_config(page_title="오늘의 꼬마식탁", page_icon="🥑", layout="wide")
+st.set_page_config(page_title="오늘의 꼬마식탁", page_icon="🥕", layout="wide")
 
-# ---------- 스타일 ----------
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap');
-html, body, [class*="css"] { font-family: 'Gowun Dodum', sans-serif; }
-.stApp { background: #fffdf8; color: #26352b; }
-[data-testid="stSidebar"] { background: #f1f6ed; border-right: 1px solid #e5eadf; }
-.hero {
-  padding: 1.6rem 1.7rem; border-radius: 24px;
-  background: linear-gradient(120deg, #e5f3df 0%, #fff0d9 100%);
-  border: 1px solid #e2ebdc; margin-bottom: 1.15rem;
-}
-.hero h1 { font-family: 'Jua', sans-serif; color: #315b3d; font-size: 2.45rem; margin: 0; }
-.hero p { color: #58715b; margin: .5rem 0 0; font-size: 1.03rem; }
-.eyebrow { color:#6d8c67; font-size:.82rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
-.recipe-name { font-family:'Jua',sans-serif; color:#315b3d; font-size:1.25rem; }
-div[data-testid="stMetric"] { background:#fff; border:1px solid #e8ecdf; padding:12px 14px; border-radius:16px; }
-div.stButton > button { border-radius: 12px; font-weight:700; }
-div[data-testid="stForm"] { background:#fff; padding:1rem; border:1px solid #e8ecdf; border-radius:18px; }
-.tipbox { background:#f3f7ed; border-radius:14px; padding:12px 14px; border:1px solid #e2ead9; }
-footer {visibility:hidden;}
-</style>
-""", unsafe_allow_html=True)
-
-# Food-specific images: the displayed image changes with the selected recipe.
-# These are remote Unsplash CDN images; if a URL is unavailable, the app shows an emoji fallback.
+# ----------------------------
+# 앱 내장 레시피 데이터
+# allergens는 식품 알레르기 표시용 주요 성분 태그입니다.
+# 실제 제품/양념의 교차오염 가능성은 별도로 확인해야 합니다.
+# ----------------------------
 RECIPES = [
-    {"name":"소고기 채소죽","meal":"아침","ages":["6~11개월","1~2세","3~5세","6세 이상"],"ingredients":[("쌀","밥 기준 1/3공기"),("소고기","30~50g"),("당근","조금"),("애호박","조금")],"allergens":[],"groups":["곡류","단백질","채소"],"minutes":25,"emoji":"🥣","image":"https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=1000&q=85","steps":["쌀을 씻어 불립니다.","소고기와 채소를 잘게 다집니다.","냄비에 재료와 물을 넣고 재료가 충분히 부드러워질 때까지 끓입니다.","아이의 발달 단계에 맞춰 입자와 농도를 조절합니다."],"tip":"이유식 진행 단계와 삼킴 능력에 맞춰 질감을 조절하세요."},
-    {"name":"바나나 오트밀","meal":"아침","ages":["6~11개월","1~2세","3~5세","6세 이상"],"ingredients":[("오트밀","20~30g"),("바나나","1/2개"),("물","적당량")],"allergens":[],"groups":["곡류","과일"],"minutes":10,"emoji":"🍌","image":"https://images.unsplash.com/photo-1517673132405-a56a62b18caf?auto=format&fit=crop&w=1000&q=85","steps":["오트밀에 물을 넣고 부드럽게 끓입니다.","바나나를 포크로 으깹니다.","오트밀이 적당히 식으면 바나나를 섞어 제공합니다."],"tip":"우유를 넣지 않는 기본 레시피입니다."},
-    {"name":"두부 달걀찜","meal":"아침","ages":["1~2세","3~5세","6세 이상"],"ingredients":[("두부","1/4모"),("달걀","1개"),("당근","조금")],"allergens":["대두","달걀"],"groups":["단백질","채소"],"minutes":15,"emoji":"🍳","image":"https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=1000&q=85","steps":["두부를 으깨고 당근을 잘게 다집니다.","달걀과 재료를 골고루 섞습니다.","찜기나 약불에서 속까지 완전히 익힙니다."],"tip":"달걀 또는 대두 알레르기가 등록되어 있다면 추천 목록에서 제외됩니다."},
-    {"name":"닭고기 채소덮밥","meal":"점심","ages":["1~2세","3~5세","6세 이상"],"ingredients":[("닭고기","100~150g"),("밥","아이 1공기"),("당근","1/3개"),("브로콜리","작은 송이 3개")],"allergens":[],"groups":["곡류","단백질","채소"],"minutes":20,"emoji":"🍚","image":"https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=1000&q=85","steps":["닭고기와 채소를 깨끗이 씻습니다.","당근과 브로콜리를 잘게 썹니다.","닭고기를 속까지 완전히 익히고 채소도 부드럽게 익힙니다.","밥 위에 올리고 아이에게 알맞은 크기로 잘라 제공합니다."],"tip":"소금과 간장은 최소한으로 사용하세요."},
-    {"name":"두부 버섯덮밥","meal":"점심","ages":["1~2세","3~5세","6세 이상"],"ingredients":[("두부","1/4모"),("버섯","소량"),("밥","아이 1공기"),("양파","조금")],"allergens":["대두"],"groups":["곡류","단백질","채소"],"minutes":20,"emoji":"🍄","image":"https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=1000&q=85","steps":["두부와 버섯, 양파를 잘게 썹니다.","재료에 물을 조금 넣고 충분히 익힙니다.","밥 위에 올려 따뜻하게 제공합니다."],"tip":"버섯은 질기지 않도록 잘게 썰어 충분히 익히세요."},
-    {"name":"연어 채소밥","meal":"점심","ages":["1~2세","3~5세","6세 이상"],"ingredients":[("연어","80~100g"),("밥","아이 1공기"),("브로콜리","조금"),("당근","조금")],"allergens":["생선"],"groups":["곡류","단백질","채소"],"minutes":25,"emoji":"🐟","image":"https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=1000&q=85","steps":["연어를 속까지 완전히 익힙니다.","가시가 남아 있지 않은지 꼼꼼히 확인하고 잘게 부숩니다.","부드럽게 익힌 채소와 밥을 함께 제공합니다."],"tip":"생선 가시를 꼼꼼히 확인하세요."},
-    {"name":"소고기 무국과 밥","meal":"저녁","ages":["1~2세","3~5세","6세 이상"],"ingredients":[("소고기","80g"),("무","조금"),("밥","아이 1공기")],"allergens":[],"groups":["곡류","단백질","채소"],"minutes":30,"emoji":"🍲","image":"https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=1000&q=85","steps":["소고기와 무를 작게 썹니다.","재료를 물에 넣고 충분히 푹 끓입니다.","간을 최소화하고 건더기를 먹기 좋은 크기로 제공합니다."],"tip":"어린아이에게는 국물의 간을 최소화하세요."},
-    {"name":"닭고기 감자조림","meal":"저녁","ages":["1~2세","3~5세","6세 이상"],"ingredients":[("닭고기","100g"),("감자","1/2개"),("당근","조금"),("밥","아이 1공기")],"allergens":[],"groups":["곡류","단백질","채소"],"minutes":25,"emoji":"🥔","image":"https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1000&q=85","steps":["닭고기와 감자, 당근을 작게 썹니다.","냄비에 재료와 물을 넣고 푹 익힙니다.","닭고기가 속까지 익고 감자가 부드러워졌는지 확인합니다.","밥과 함께 제공하고 필요하면 더 잘게 자릅니다."],"tip":"간장과 소금은 최소한으로 사용하세요."},
-    {"name":"고구마와 배","meal":"간식","ages":["6~11개월","1~2세","3~5세","6세 이상"],"ingredients":[("고구마","작은 것 1개"),("배","조금")],"allergens":[],"groups":["채소","과일"],"minutes":15,"emoji":"🍠","image":"https://images.unsplash.com/photo-1596097635121-14b63b7a0c19?auto=format&fit=crop&w=1000&q=85","steps":["고구마를 속까지 푹 찝니다.","배를 씻고 씨와 단단한 부분을 제거합니다.","부드럽고 안전한 크기로 준비합니다."],"tip":"둥글고 단단한 조각은 질식 위험이 있으니 크기와 질감을 조절하세요."},
-    {"name":"플레인 요거트와 딸기","meal":"간식","ages":["1~2세","3~5세","6세 이상"],"ingredients":[("무가당 플레인 요거트","1개"),("딸기","1~2개")],"allergens":["우유"],"groups":["유제품","과일"],"minutes":5,"emoji":"🍓","image":"https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=1000&q=85","steps":["딸기를 깨끗이 씻고 꼭지를 제거합니다.","아이에게 알맞은 작은 크기로 자릅니다.","무가당 플레인 요거트와 섞어 제공합니다."],"tip":"우유 알레르기가 있으면 이 메뉴를 제외하세요."},
-    {"name":"채소 주먹밥","meal":"점심","ages":["1~2세","3~5세","6세 이상"],"ingredients":[("밥","아이 1공기"),("당근","조금"),("애호박","조금"),("참기름","몇 방울")],"allergens":["참깨"],"groups":["곡류","채소"],"minutes":20,"emoji":"🍙","image":"https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=1000&q=85","steps":["당근과 애호박을 잘게 다져 충분히 익힙니다.","밥과 채소를 섞고 참기름을 소량 넣습니다.","아이가 먹기 쉬운 작은 크기로 만듭니다."],"tip":"참깨 알레르기가 등록되어 있다면 추천 목록에서 제외됩니다."},
-    {"name":"단호박 두부수프","meal":"저녁","ages":["6~11개월","1~2세","3~5세","6세 이상"],"ingredients":[("단호박","1/8개"),("두부","조금"),("물","적당량")],"allergens":["대두"],"groups":["채소","단백질"],"minutes":20,"emoji":"🎃","image":"https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=1000&q=85","steps":["단호박을 푹 쪄서 껍질과 씨를 제거합니다.","단호박과 두부, 물을 넣고 부드럽게 끓입니다.","아이에게 알맞은 농도로 으깨거나 갈아 제공합니다."],"tip":"대두 알레르기가 있다면 두부를 넣지 마세요."},
+    {
+        "id": "rice_bowl", "name": "닭고기 채소 덮밥", "category": "한 그릇", "age_min": 12,
+        "time": 20, "difficulty": "쉬워요", "image": "https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=1000&q=80",
+        "ingredients": ["밥 1공기", "닭고기 80g", "당근 20g", "애호박 20g", "양파 15g", "식용유 약간"],
+        "allergens": [], "avoid_tags": ["닭고기"],
+        "steps": ["닭고기와 채소를 아이가 먹기 좋은 작은 크기로 썰어요.", "팬에 식용유를 아주 조금 두르고 닭고기를 완전히 익혀요.", "당근, 애호박, 양파를 넣고 부드러워질 때까지 볶아요.", "밥 위에 올리고 재료가 너무 뜨겁지 않은지 확인해 주세요."],
+        "tips": "돌 이후 아이는 질기거나 큰 조각이 없도록 잘게 잘라 주세요."
+    },
+    {
+        "id": "beef_porridge", "name": "소고기 채소죽", "category": "죽", "age_min": 7,
+        "time": 25, "difficulty": "쉬워요", "image": "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=1000&q=80",
+        "ingredients": ["밥 1/2공기", "다진 소고기 40g", "당근 15g", "애호박 15g", "물 250ml"],
+        "allergens": [], "avoid_tags": ["소고기"],
+        "steps": ["당근과 애호박을 아주 잘게 다져요.", "냄비에 소고기를 넣고 색이 변할 때까지 볶아요.", "밥과 채소, 물을 넣고 약불에서 저어 가며 끓여요.", "재료가 충분히 부드러워지고 고기가 완전히 익으면 식혀서 주세요."],
+        "tips": "월령과 씹기 능력에 맞춰 물의 양과 입자 크기를 조절하세요."
+    },
+    {
+        "id": "salmon_pasta", "name": "연어 채소 파스타", "category": "면", "age_min": 12,
+        "time": 25, "difficulty": "보통", "image": "https://images.unsplash.com/photo-1473093295043-cdd812d0e601?auto=format&fit=crop&w=1000&q=80",
+        "ingredients": ["짧은 파스타 60g", "연어 60g", "브로콜리 25g", "양파 15g", "올리브유 약간"],
+        "allergens": ["생선", "밀"], "avoid_tags": ["생선"],
+        "steps": ["파스타를 제품 안내에 따라 충분히 익혀요.", "연어의 가시를 꼼꼼히 확인하고 완전히 익힌 뒤 잘게 부숴요.", "브로콜리와 양파를 부드럽게 익혀 잘게 다져요.", "모든 재료를 섞고 필요하면 면수를 조금 넣어 부드럽게 마무리해요."],
+        "tips": "생선 가시와 면의 길이·탄력에 주의하고 아이가 먹기 좋은 크기로 준비하세요."
+    },
+    {
+        "id": "egg_pancake", "name": "채소 달걀전", "category": "반찬", "age_min": 12,
+        "time": 15, "difficulty": "쉬워요", "image": "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=1000&q=80",
+        "ingredients": ["달걀 1개", "당근 15g", "애호박 15g", "양파 10g", "식용유 약간"],
+        "allergens": ["달걀"], "avoid_tags": [],
+        "steps": ["채소를 아주 잘게 다져요.", "달걀을 풀고 다진 채소를 섞어요.", "달군 팬에 기름을 아주 조금 바르고 한입 크기로 부쳐요.", "속까지 완전히 익힌 뒤 충분히 식혀서 제공해요."],
+        "tips": "달걀 알레르기가 있으면 이 레시피는 선택하지 마세요."
+    },
+    {
+        "id": "tofu_rice", "name": "두부 버섯 비빔밥", "category": "한 그릇", "age_min": 12,
+        "time": 20, "difficulty": "쉬워요", "image": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1000&q=80",
+        "ingredients": ["밥 1공기", "두부 80g", "표고버섯 20g", "당근 15g", "참기름 몇 방울"],
+        "allergens": ["대두"], "avoid_tags": [],
+        "steps": ["두부의 물기를 빼고 작은 큐브로 썰어요.", "버섯과 당근을 잘게 다져 충분히 익혀요.", "두부를 넣고 부서지지 않게 볶아요.", "밥 위에 올리고 참기름을 아주 조금 더해 섞어 주세요."],
+        "tips": "두부는 대두 성분을 포함해요. 대두 알레르기가 있으면 제외하세요."
+    },
+    {
+        "id": "chicken_soup", "name": "닭고기 감자 수프", "category": "국·수프", "age_min": 9,
+        "time": 25, "difficulty": "쉬워요", "image": "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=1000&q=80",
+        "ingredients": ["닭고기 60g", "감자 1/2개", "양파 15g", "물 250ml", "우유 50ml(선택)"],
+        "allergens": ["우유"], "avoid_tags": ["닭고기"],
+        "steps": ["닭고기와 감자, 양파를 작은 크기로 썰어요.", "냄비에 물과 재료를 넣고 속까지 완전히 익혀요.", "감자가 부드러워지면 숟가락으로 으깨 농도를 조절해요.", "우유를 사용할 경우 우유 알레르기가 없는지 확인하고 한 번 더 데워요."],
+        "tips": "우유를 빼고 물로 조리하면 우유 성분을 줄일 수 있지만, 다른 재료의 교차접촉은 별도로 확인해야 해요."
+    },
+    {
+        "id": "banana_oat", "name": "바나나 오트밀", "category": "간식", "age_min": 8,
+        "time": 10, "difficulty": "쉬워요", "image": "https://images.unsplash.com/photo-1517673132405-a56a62b18caf?auto=format&fit=crop&w=1000&q=80",
+        "ingredients": ["오트밀 25g", "바나나 1/2개", "물 또는 우유 100ml"],
+        "allergens": ["귀리", "우유(우유 사용 시)"], "avoid_tags": [],
+        "steps": ["바나나를 포크로 충분히 으깨요.", "오트밀과 물을 냄비에 넣고 약불에서 부드러워질 때까지 끓여요.", "으깬 바나나를 섞고 충분히 식혀요.", "우유를 사용할 경우 알레르기 여부를 확인하고 물로 대체할 수 있어요."],
+        "tips": "귀리 제품은 제조 시설의 밀 등 교차접촉 표시도 확인하세요."
+    },
+    {
+        "id": "sweet_potato", "name": "고구마 요거트 볼", "category": "간식", "age_min": 12,
+        "time": 15, "difficulty": "쉬워요", "image": "https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=1000&q=80",
+        "ingredients": ["고구마 1/2개", "플레인 요거트 2큰술"],
+        "allergens": ["우유"], "avoid_tags": [],
+        "steps": ["고구마를 찌거나 삶아 속까지 부드럽게 익혀요.", "껍질을 벗기고 덩어리가 없도록 으깨요.", "충분히 식힌 뒤 플레인 요거트를 섞어요.", "아이의 씹기 능력에 맞는 농도로 조절해 주세요."],
+        "tips": "우유 알레르기가 있으면 요거트를 넣지 말고, 대체 제품 성분표를 확인하세요."
+    },
+    {
+        "id": "pork_rice", "name": "돼지고기 애호박 볶음밥", "category": "한 그릇", "age_min": 12,
+        "time": 20, "difficulty": "쉬워요", "image": "https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=1000&q=80",
+        "ingredients": ["밥 1공기", "다진 돼지고기 60g", "애호박 25g", "당근 15g", "양파 15g"],
+        "allergens": [], "avoid_tags": ["돼지고기"],
+        "steps": ["채소를 잘게 다져요.", "다진 돼지고기를 팬에서 완전히 익혀요.", "채소를 넣고 부드러워질 때까지 볶아요.", "밥을 넣고 골고루 섞어 충분히 데운 뒤 식혀 주세요."],
+        "tips": "고기는 속까지 완전히 익히고 큰 덩어리가 남지 않도록 해 주세요."
+    },
+    {
+        "id": "rice_ball", "name": "김가루 채소 주먹밥", "category": "간식·한 끼", "age_min": 12,
+        "time": 15, "difficulty": "쉬워요", "image": "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=1000&q=80",
+        "ingredients": ["밥 1공기", "당근 15g", "시금치 15g", "김가루 1작은술", "참기름 몇 방울"],
+        "allergens": [], "avoid_tags": [],
+        "steps": ["당근과 시금치를 부드럽게 익혀 잘게 다져요.", "밥에 채소와 김가루, 참기름을 섞어요.", "아이의 씹기 능력에 맞는 작고 부드러운 크기로 뭉쳐요.", "목에 걸리지 않도록 질거나 딱딱하지 않은지 확인하며 보호자와 함께 먹어요."],
+        "tips": "둥글고 단단한 큰 주먹밥은 질식 위험이 있어 작고 부드럽게 준비하세요."
+    },
+    {
+        "id": "lentil_soup", "name": "렌틸콩 채소 수프", "category": "국·수프", "age_min": 12,
+        "time": 30, "difficulty": "보통", "image": "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=1000&q=80",
+        "ingredients": ["렌틸콩 40g", "당근 20g", "감자 1/2개", "양파 15g", "물 300ml"],
+        "allergens": [], "avoid_tags": [],
+        "steps": ["렌틸콩을 씻고 채소를 작게 썰어요.", "냄비에 모든 재료와 물을 넣어요.", "약불에서 렌틸콩과 채소가 완전히 부드러워질 때까지 끓여요.", "필요하면 으깨거나 갈아 아이에게 맞는 질감으로 조절해요."],
+        "tips": "콩류를 처음 먹는 경우 소량으로 시작하고 반응을 살펴보세요."
+    },
+    {
+        "id": "cheese_broccoli", "name": "브로콜리 치즈 감자", "category": "반찬", "age_min": 12,
+        "time": 15, "difficulty": "쉬워요", "image": "https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=1000&q=80",
+        "ingredients": ["감자 1개", "브로콜리 30g", "치즈 1/2장"],
+        "allergens": ["우유"], "avoid_tags": [],
+        "steps": ["감자와 브로콜리를 부드럽게 찌거나 삶아요.", "감자를 포크로 으깨고 브로콜리를 잘게 다져요.", "치즈를 넣어 잔열로 녹이고 잘 섞어요.", "너무 뜨겁지 않게 식혀 제공해요."],
+        "tips": "치즈는 우유 성분이 들어 있어 우유 알레르기가 있으면 제외하세요."
+    },
 ]
 
-AGE_OPTIONS = ["6~11개월", "1~2세", "3~5세", "6세 이상"]
-ALLERGENS = ["달걀", "우유", "땅콩", "견과류", "대두", "밀", "생선", "새우·갑각류", "참깨"]
-DAYS = ["월", "화", "수", "목", "금", "토", "일"]
-
-def allowed(recipe, age, allergies, dislikes):
-    if age not in recipe["ages"]:
-        return False
-    if set(recipe["allergens"]) & set(allergies):
-        return False
-    searchable = recipe["name"] + " " + " ".join(n for n, _ in recipe["ingredients"])
-    return not any(word and word in searchable for word in dislikes)
-
-def make_plan(age, allergies, dislikes, snacks, seed):
-    meal_types = ["아침", "점심", "저녁"] + (["간식"] if snacks else [])
-    rng = random.Random(seed)
-    plan = []
-    usage = Counter()
-    for day_index, day in enumerate(DAYS):
-        day_items = []
-        for meal_type in meal_types:
-            choices = [r for r in RECIPES if r["meal"] == meal_type and allowed(r, age, allergies, dislikes)]
-            if not choices:
-                choices = [r for r in RECIPES if allowed(r, age, allergies, dislikes)]
-            if choices:
-                rng.shuffle(choices)
-                choices.sort(key=lambda r: usage[r["name"]])
-                recipe = choices[0]
-                usage[recipe["name"]] += 1
-                day_items.append({"meal": meal_type, "recipe": recipe})
-            else:
-                day_items.append({"meal": meal_type, "recipe": None})
-        plan.append({"day": day, "items": day_items})
-    return plan
-
-def plan_csv(plan):
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow(["요일", "식사", "메뉴", "재료"])
-    for day in plan:
-        for item in day["items"]:
-            recipe = item["recipe"]
-            writer.writerow([day["day"] + "요일", item["meal"], recipe["name"] if recipe else "조건에 맞는 메뉴 없음",
-                             ", ".join(n for n, _ in recipe["ingredients"]) if recipe else ""])
-    return ("\ufeff" + output.getvalue()).encode("utf-8")
-
-def show_food_image(recipe, caption=None):
-    if recipe:
-        try:
-            st.image(recipe["image"], caption=caption or recipe["name"], use_container_width=True)
-        except Exception:
-            st.markdown(f"<div style='font-size:5rem;text-align:center;padding:2rem;background:#f4f6eb;border-radius:16px'>{recipe['emoji']}</div>", unsafe_allow_html=True)
-
-if "profile" not in st.session_state:
-    st.session_state.profile = {"name": "우리 아이", "age": "3~5세", "allergies": [], "dislikes": "", "snacks": True}
-if "menu_seed" not in st.session_state:
-    st.session_state.menu_seed = date.today().isoformat()
-
-profile = st.session_state.profile
-with st.sidebar:
-    st.markdown("## 🥑 꼬마식탁")
-    page = st.radio("페이지", ["오늘의 식단", "주간 식단표", "레시피와 재료", "장보기 목록", "아이 정보 입력"], label_visibility="collapsed")
-    st.markdown("---")
-    st.markdown("### 아이 프로필")
-    st.write(f"👧 **{profile['name']}**")
-    st.write(f"🌱 {profile['age']}")
-    st.write("🚫 " + (", ".join(profile["allergies"]) if profile["allergies"] else "알레르기 미등록"))
-    st.caption("입력 내용은 이 세션에서만 사용됩니다.")
-
-st.markdown("""
-<div class="hero">
-  <div class="eyebrow">LITTLE TABLE · DAILY MENU</div>
-  <h1>오늘의 꼬마식탁 🥦</h1>
-  <p>우리 아이에게 꼭 맞는 메뉴를 고르고, 재료부터 만드는 방법까지 한 번에 확인해요.</p>
-</div>
-""", unsafe_allow_html=True)
-
-allergies = profile["allergies"]
-dislikes = [x.strip() for x in profile["dislikes"].split(",") if x.strip()]
-# Seed changes by date automatically. The button also lets the user get another set immediately.
-today_seed = date.today().isoformat() + "|" + st.session_state.menu_seed
-seed = int(hashlib.sha256(today_seed.encode("utf-8")).hexdigest()[:8], 16)
-week = make_plan(profile["age"], allergies, dislikes, profile["snacks"], seed)
-
-if page == "아이 정보 입력":
-    st.subheader("🧸 우리 아이 정보")
-    st.write("아이의 연령과 먹을 수 없는 재료를 입력하면 메뉴 추천에 반영됩니다.")
-    with st.form("profile_form"):
-        name = st.text_input("아이 별명", value=profile["name"], max_chars=30, placeholder="예: 튼튼이")
-        age = st.selectbox("연령대", AGE_OPTIONS, index=AGE_OPTIONS.index(profile["age"]) if profile["age"] in AGE_OPTIONS else 2)
-        allergies_input = st.multiselect("알레르기 식재료", ALLERGENS, default=[a for a in profile["allergies"] if a in ALLERGENS])
-        dislikes_input = st.text_input("기피 식재료 (쉼표로 구분)", value=profile["dislikes"], placeholder="예: 버섯, 양파")
-        snacks_input = st.checkbox("간식도 식단에 포함하기", value=profile["snacks"])
-        saved = st.form_submit_button("🌿 내 아이 식단에 적용", type="primary", use_container_width=True)
-    if saved:
-        st.session_state.profile = {
-            "name": name.strip() or "우리 아이", "age": age,
-            "allergies": allergies_input, "dislikes": dislikes_input, "snacks": snacks_input
-        }
-        st.success("입력한 정보를 식단에 적용했어요!")
-        st.rerun()
-
-elif page == "오늘의 식단":
-    st.subheader(f"반가워요, {profile['name']} 보호자님! 🌼")
-    m1, m2, m3 = st.columns(3)
-    m1.metric("오늘 날짜", date.today().strftime("%Y.%m.%d"))
-    m2.metric("제외한 알레르기", f"{len(allergies)}개")
-    m3.metric("식단 구성", "3끼 + 간식" if profile["snacks"] else "하루 3끼")
-    st.markdown("### 🍽️ 오늘 추천 메뉴")
-    today_items = week[date.today().weekday()]["items"]
-    cols = st.columns(len(today_items))
-    for idx, item in enumerate(today_items):
-        with cols[idx]:
-            with st.container(border=True):
-                st.markdown(f"**{item['meal']}**")
-                if item["recipe"]:
-                    show_food_image(item["recipe"])
-                    st.markdown(f"<div class='recipe-name'>{item['recipe']['name']}</div>", unsafe_allow_html=True)
-                    st.caption(f"⏱️ {item['recipe']['minutes']}분 · " + " · ".join(item["recipe"]["groups"]))
-                else:
-                    st.info("현재 조건에 맞는 메뉴가 부족해요.")
-    if st.button("🔄 다른 메뉴로 다시 추천받기", type="primary", use_container_width=True):
-        st.session_state.menu_seed = str(random.random())
-        st.rerun()
-    st.markdown("### ✨ 추천 메뉴는 이렇게 정해져요")
-    a, b, c = st.columns(3)
-    with a:
-        st.markdown("<div class='tipbox'><b>1. 아이 정보</b><br>연령과 알레르기, 기피 재료를 확인해요.</div>", unsafe_allow_html=True)
-    with b:
-        st.markdown("<div class='tipbox'><b>2. 메뉴 필터링</b><br>조건에 맞지 않는 레시피를 추천 후보에서 제외해요.</div>", unsafe_allow_html=True)
-    with c:
-        st.markdown("<div class='tipbox'><b>3. 매일 새롭게</b><br>날짜에 따라 메뉴 구성이 바뀌고, 버튼으로 다시 추천할 수 있어요.</div>", unsafe_allow_html=True)
-
-elif page == "주간 식단표":
-    st.subheader("📅 일주일 식단")
-    st.caption("날짜에 따라 메뉴 구성이 바뀝니다. 다른 메뉴가 필요하면 오늘의 식단에서 다시 추천받을 수 있어요.")
-    for day in week:
-        with st.container(border=True):
-            st.markdown(f"### {day['day']}요일")
-            cols = st.columns(len(day["items"]))
-            for idx, item in enumerate(day["items"]):
-                with cols[idx]:
-                    st.markdown(f"**{item['meal']}**")
-                    if item["recipe"]:
-                        show_food_image(item["recipe"])
-                        st.write(item["recipe"]["name"])
-                        st.caption(f"{item['recipe']['minutes']}분")
-                    else:
-                        st.write("조건에 맞는 메뉴 없음")
-    st.download_button("⬇️ 주간 식단표 CSV 다운로드", data=plan_csv(week), file_name="꼬마식탁_주간식단표.csv", mime="text/csv", use_container_width=True)
-
-elif page == "레시피와 재료":
-    st.subheader("👩‍🍳 메뉴별 재료와 만드는 방법")
-    choices = [r for r in RECIPES if allowed(r, profile["age"], allergies, dislikes)]
-    if not choices:
-        st.warning("조건에 맞는 메뉴가 없습니다. 아이 정보 입력에서 기피 재료를 확인해 주세요.")
-    else:
-        selected_name = st.selectbox("궁금한 메뉴를 선택하세요", [r["name"] for r in choices])
-        recipe = next(r for r in choices if r["name"] == selected_name)
-        left, right = st.columns([1, 1.15])
-        with left:
-            show_food_image(recipe)
-            st.metric("예상 조리 시간", f"{recipe['minutes']}분")
-            st.write("**식품군:** " + " · ".join(recipe["groups"]))
-            if recipe["allergens"]:
-                st.warning("알레르기 확인 재료: " + ", ".join(recipe["allergens"]))
-        with right:
-            st.markdown("### 🧺 준비할 재료")
-            for ingredient, amount in recipe["ingredients"]:
-                st.write(f"- **{ingredient}** — {amount}")
-            st.markdown("### 🥄 만드는 순서")
-            for idx, step in enumerate(recipe["steps"], start=1):
-                st.write(f"{idx}. {step}")
-            st.info("보호자 팁: " + recipe["tip"])
-
-elif page == "장보기 목록":
-    st.subheader("🛒 이번 주 장보기")
-    totals = Counter()
-    for day in week:
-        for item in day["items"]:
-            if item["recipe"]:
-                totals.update(name for name, _ in item["recipe"]["ingredients"])
-    if not totals:
-        st.warning("현재 조건에 맞는 메뉴가 없어 장보기 목록을 만들 수 없습니다.")
-    else:
-        st.caption("체크하면서 장을 보세요. 재료 수량은 메뉴에 등장하는 횟수 기준입니다.")
-        checked = 0
-        for ingredient, count in sorted(totals.items()):
-            if st.checkbox(f"{ingredient} · {count}회 사용", key="shop_" + ingredient):
-                checked += 1
-        st.progress(checked / len(totals))
-        st.write(f"준비 완료: {checked}/{len(totals)}개")
-        shopping_text = "꼬마식탁 장보기 목록\n" + "\n".join(f"- {name} ({count}회 사용)" for name, count in sorted(totals.items()))
-        st.download_button("⬇️ 장보기 목록 다운로드", data=shopping_text, file_name="꼬마식탁_장보기.txt", mime="text/plain", use_container_width=True)
-
-st.markdown("---")
-st.caption("💚 참고용 식단 아이디어입니다. 알레르기는 제품 성분표와 교차오염 정보를 확인하세요. 영유아는 질식 위험을 고려해 안전한 크기와 질감으로 조리하고, 의료진의 지침을 우선하세요.")
+ALLERGEN_OPTIONS = ["우유", "달걀", "대두", "밀", "생선", "땅콩", "견과류", "새우·갑각류", "메밀", "참깨", "귀리", "돼지고기", "소고기", "닭고기"]
+ALLERGEN_ALIASES = {
+    "우유": ["우유", "요거트", "치즈", "버터", "크림", "유청", "분유"],
+    "달걀": ["달걀", "계란", "난백", "난황"],
+    "대두": ["대두", "두부", "콩", "간장", "두유", "된장"],
+    "밀": ["밀", "파스타", "면", "빵", "밀가루", "간장"],
+    "생선": ["생선", "연어", "참치", "대구"],
+    "땅콩": ["땅콩", "피넛"],
+    "견과류": ["견과", "아몬드", "호두", "캐슈", "헤이즐넛", "피스타치오"],
+    "새우·갑각류": ["새우", "게", "갑각류", "크릴"],
+    "메밀": ["메밀"],
+    "참깨": ["참깨", "참기름", "깨"],
+    "귀리": ["귀리", "오트밀"],
+    "돼지고기": ["돼지고기", "돼지"],
+    "소고기": ["소고기", "쇠고기"],
