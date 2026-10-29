@@ -1,7 +1,7 @@
 import streamlit as st
 
 st.set_page_config(
-    page_title="한끼의 여유",
+    page_title="아이랑 한끼",
     page_icon="🍚",
     layout="wide"
 )
